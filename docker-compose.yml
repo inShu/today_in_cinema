@@ -9,7 +9,6 @@ services:
   todayincinema:
     environment:
       - BOT_TOKEN=
-      - BOT_USERS=
     build: .
     restart: unless-stopped
     networks:
