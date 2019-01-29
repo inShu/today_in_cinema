@@ -88,7 +88,6 @@ def get_cinema():
         date_index = text.find("dates/", index)
         date_end = text.find(".png", date_index)
         num1 = text[date_index + 6:date_end]
-        day = int(num1) * 10
 
         index = text.find("dates/month_", index + 1)
         end_index = text.find(".png", index)
@@ -99,7 +98,9 @@ def get_cinema():
         if date_index > 0 and date_index < index:
             date_end = text.find(".png", date_index)
             num2 = text[date_index + 6:date_end]
-            day += int(num2)
+            day = int(num1) * 10 + int(num2)
+        else:
+            day = int(num1)
 
         formatted_date = "{0:0>2d}-{1}".format(day, month)
         print("{0:0>2d}.{1} id {2} {3}".format(day, month, movie_id, movie_name))
@@ -158,6 +159,7 @@ def main():
             print("Exception: " + str(exp))
             updater.bot.send_message(chat_id=-1001416077726, text="today_in_cinema: " + msg)
 
-        time.sleep(60*60*24)
+        time.sleep(60*60)
+
 
 main()
