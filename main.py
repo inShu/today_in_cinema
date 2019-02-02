@@ -8,6 +8,7 @@ import os
 
 from telegram.ext import Updater
 
+proxy = {"http": "http://tor:8118"}
 updater = Updater(
 	token=os.environ["BOT_TOKEN"],
 	request_kwargs=
@@ -24,7 +25,7 @@ class Movie:
         self.name = name
         self.id = id
         self.actors = []
-        self.image = "https://www.kinopoisk.ru/images/film_big/{0}.jpg".format(id)
+        self.image = "https://st.kp.yandex.net/images/film_big/{0}.jpg".format(id)
         self.producer = ""
         self.description = ""
 
@@ -40,27 +41,28 @@ def make_get(url):
 
 def get_movie_data(movie):
     text = make_get("https://www.kinopoisk.ru/film/" + movie.id)
+    print("Getting movie data for " + movie.name)
 
     index = text.find(">", text.find("<a href", text.find("itemprop=\"director")))
     end_index = text.find("<", index)
     movie.producer = text[index + 1:end_index]
 
     count = 4
-    index = text.find("ul", text.find("В главных ролях"))
-    while count > 0:
-        index = text.find("\">", text.find("<a href", text.find("<li", index + 1)))
-        end_index = text.find("<", index)
-        movie.actors.append(text[index + 2:end_index])
-        count -= 1
+    index = text.find("В главных ролях")
+    if index > 0:
+        index = text.find("ul", index)
+        movie.actors.clear()
+        while count > 0:
+            index = text.find("\">", text.find("<a href", text.find("<li", index + 1)))
+            end_index = text.find("<", index)
+            movie.actors.append(text[index + 2:end_index])
+            count -= 1
+    else:
+        index = 0
 
     index = text.find("\">", text.find("itemprop=\"description", index))
     end_index = text.find("<", index)
     movie.description = html.unescape(text[index + 2:end_index])
-
-    print("Producer: " + movie.producer)
-    print("Actor: " + str(movie.actors))
-    print("Description: " + movie.description)
-
 
 
 def get_cinema():
@@ -109,18 +111,34 @@ def get_cinema():
             today.append(Movie(movie_name, formatted_date, movie_id))
 
     for movie in today:
+        time.sleep(120)
         get_movie_data(movie)
+        while movie.actors[0].find("html") > 0:
+            print("Stuck for " + movie.name)
+            time.sleep(600)
+            get_movie_data(movie)
 
     return today
 
 
 def announce_movie(movie):
+    print("=================================")
+    print("{0} {1} {2}".format(movie.name, movie.id, movie.date))
+    print("{0}".format(movie.actors))
+    print("{0}".format(movie.producer))
+    print("{0}".format(movie.image))
+    print("{0}".format(movie.description))
+    print("=================================")
+
     actors_str = ""
     for actor in movie.actors:
         actors_str += actor + ", "
     actors_str = actors_str[:-2]
-    msg = "Режиссёр: {0}\nВ ролях: {1}\nСюжет: \"{2}\"".format(movie.producer, actors_str, movie.description)
-    updater.bot.send_photo(chat_id="@todayincinemaru", photo=movie.image, caption=msg)
+    msg = "Режиссёр: {0}\n".format(movie.producer)
+    if len(movie.actors) > 0:
+        msg += "В ролях: {0}\n".format(actors_str)
+    msg += "Сюжет: \"{0}\"".format(movie.description)
+    updater.bot.send_photo(chat_id="@todayincinemaru", photo=movie.image, caption=msg, timeout=180)
 
 
 def check():
@@ -151,13 +169,15 @@ def main():
                 today = get_cinema()
 
                 for movie in today:
+                    print("Announce " + movie.name)
                     announce_movie(movie)
+                    time.sleep(300)
                 fix_check()
         except BaseException as exp:
             msg = "Traceback: " + traceback.format_exc() + "\n" + "Exception: " + str(exp)
             print("Traceback: " + traceback.format_exc())
             print("Exception: " + str(exp))
-            updater.bot.send_message(chat_id=-1001416077726, text="today_in_cinema: " + msg)
+            updater.bot.send_message(chat_id=-1001416077726, text="today_in_cinema: " + msg, timeout=180)
 
         time.sleep(60*60)
 
