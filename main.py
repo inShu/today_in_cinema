@@ -113,7 +113,7 @@ def get_cinema():
     for movie in today:
         time.sleep(120)
         get_movie_data(movie)
-        while movie.actors[0].find("html") > 0:
+        while movie.name.find("html") > 0:
             print("Stuck for " + movie.name)
             time.sleep(600)
             get_movie_data(movie)
